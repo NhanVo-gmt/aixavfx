@@ -12,7 +12,7 @@ NORMAL, MILD, MODERATE, SEVERE = WHITE, YELLOW, ORANGE, RED
 COLOR_A = (118, 186, 153)
 COLOR_B = (173, 207, 159)
 
-# Filter the largest connected image and return new image with that component
+# Filter the largest connected white component and return new image with that component
 def filter_mask_binary(mask):
     _, mask = cv2.threshold(mask,127,255,cv2.THRESH_BINARY)                 # Isolate the black and white component (changes to binary image)
     h, w = mask.shape                                                       # Get the width and height
@@ -23,6 +23,7 @@ def filter_mask_binary(mask):
     out = cv2.drawContours(out, [cnt], -1, 255, cv2.FILLED)                 # Draw that area onto the new image
     _, out = cv2.threshold(out,127,255,cv2.THRESH_BINARY)                   # Isolate like the first line
     return out
+
 
 def imageWithMasks(im1, im2, im3, COLOR_A, COLOR_B):
     alpha = 0.3
