@@ -25,6 +25,7 @@ def filter_mask_binary(mask):
     return out
 
 
+# Blend 2 image im2, im3 onto the im1 while highlighting part in im2, im3 with different color
 def imageWithMasks(im1, im2, im3, COLOR_A, COLOR_B):
     alpha = 0.3                                                             # Set the basic alpha
     im1rgb = cv2.cvtColor(im1, cv2.COLOR_GRAY2RGB)                          # change img1 from grayscale to rgb store in im1rgb
@@ -47,6 +48,8 @@ def imageWithMasks(im1, im2, im3, COLOR_A, COLOR_B):
     return res3
 
 class system():
+
+    # Initialize module for the class
     def __init__(self, detectModule, segmentModule, measureModule, device = "cpu"):
         self.detectModule = detectModule
         self.segmentModule = segmentModule
@@ -56,6 +59,7 @@ class system():
         self.erosion = morphology.Erosion2d(1, 1, 10, soft_max=False)
         self.dilation = morphology.Dilation2d(1, 1, 10, soft_max=False)
         
+    
     def assess(self,imagePath, visualise = False, flip = False):
         t0 = time.time()
         self.imagePath = imagePath
