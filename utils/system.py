@@ -12,15 +12,16 @@ NORMAL, MILD, MODERATE, SEVERE = WHITE, YELLOW, ORANGE, RED
 COLOR_A = (118, 186, 153)
 COLOR_B = (173, 207, 159)
 
+# Filter the largest connected image and return new image with that component
 def filter_mask_binary(mask):
-    _, mask = cv2.threshold(mask,127,255,cv2.THRESH_BINARY)
-    h, w = mask.shape
-    mask = (mask//255).astype(np.uint8)
-    cnts, _ = cv2.findContours(mask, cv2.RETR_CCOMP, cv2.CHAIN_APPROX_NONE)
-    cnt = max(cnts, key = cv2.contourArea)
-    out = np.zeros(mask.shape, np.uint8)
-    out = cv2.drawContours(out, [cnt], -1, 255, cv2.FILLED)
-    _, out = cv2.threshold(out,127,255,cv2.THRESH_BINARY)
+    _, mask = cv2.threshold(mask,127,255,cv2.THRESH_BINARY)                 # Isolate the black and white component (changes to binary image)
+    h, w = mask.shape                                                       # Get the width and height
+    mask = (mask//255).astype(np.uint8)                                     # Change all non-zero to 1 into binary format
+    cnts, _ = cv2.findContours(mask, cv2.RETR_CCOMP, cv2.CHAIN_APPROX_NONE) # Find all connected white points 
+    cnt = max(cnts, key = cv2.contourArea)                                  # Get the largest area
+    out = np.zeros(mask.shape, np.uint8)                                    # Draw new black image with the same shape
+    out = cv2.drawContours(out, [cnt], -1, 255, cv2.FILLED)                 # Draw that area onto the new image
+    _, out = cv2.threshold(out,127,255,cv2.THRESH_BINARY)                   # Isolate like the first line
     return out
 
 def imageWithMasks(im1, im2, im3, COLOR_A, COLOR_B):
