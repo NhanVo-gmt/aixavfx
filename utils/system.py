@@ -26,24 +26,24 @@ def filter_mask_binary(mask):
 
 
 def imageWithMasks(im1, im2, im3, COLOR_A, COLOR_B):
-    alpha = 0.3
-    im1rgb = cv2.cvtColor(im1, cv2.COLOR_GRAY2RGB)
+    alpha = 0.3                                                             # Set the basic alpha
+    im1rgb = cv2.cvtColor(im1, cv2.COLOR_GRAY2RGB)                          # change img1 from grayscale to rgb store in im1rgb
     #im1rgb = np.uint8(im1)
-    im2 = cv2.threshold(im2, 128, 255, cv2.THRESH_BINARY)[1]
-    im2rgb = cv2.cvtColor(im2, cv2.COLOR_GRAY2RGB)
-    im2rgb = np.where(im2rgb==BLACK, im2rgb, COLOR_A)
-    im2rgb = np.uint8(im2rgb)
-    im3 = cv2.threshold(im3, 128, 255, cv2.THRESH_BINARY)[1]
+    im2 = cv2.threshold(im2, 128, 255, cv2.THRESH_BINARY)[1]                # Similar to above isolation
+    im2rgb = cv2.cvtColor(im2, cv2.COLOR_GRAY2RGB)                          # Change to rgb type
+    im2rgb = np.where(im2rgb==BLACK, im2rgb, COLOR_A)                       # Position with BLACK color will be replaced by COLOR_A
+    im2rgb = np.uint8(im2rgb)                                               # Change to uint8 type
+    im3 = cv2.threshold(im3, 128, 255, cv2.THRESH_BINARY)[1]                
     im3rgb = cv2.cvtColor(im3, cv2.COLOR_GRAY2RGB)
     im3rgb = np.where(im3rgb==BLACK, im3rgb, COLOR_B)
     im3rgb = np.uint8(im3rgb)
     im4rgb = im1rgb.copy()
-    im4rgb = cv2.addWeighted(im2rgb + im3rgb, alpha, im4rgb, 1 - alpha, 0, im4rgb)
-    im5 = cv2.threshold(im2 + im3, 128, 255, cv2.THRESH_BINARY)[1]
+    im4rgb = cv2.addWeighted(im2rgb + im3rgb, alpha, im4rgb, 1 - alpha, 0, im4rgb)  # Blend 2 img together in img4rgb
+    im5 = cv2.threshold(im2 + im3, 128, 255, cv2.THRESH_BINARY)[1]           # Add 2 img and seperate white and black
     im5rgb = cv2.cvtColor(im5, cv2.COLOR_GRAY2RGB)                 
-    res1 = np.where(im5rgb!=BLACK, im4rgb, BLACK)
-    res2 = np.where(im5rgb==BLACK, im1rgb, BLACK)
-    res3 = cv2.bitwise_or(res1,res2)
+    res1 = np.where(im5rgb!=BLACK, im4rgb, BLACK)                            # Any element ISN'T BLACK will be replace by that position in img4rgb
+    res2 = np.where(im5rgb==BLACK, im1rgb, BLACK)                            # Any element IS BLACK will be replace by img1rgbx
+    res3 = cv2.bitwise_or(res1,res2)                                         # Perform OR operation on 2 images
     return res3
 
 class system():
