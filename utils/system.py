@@ -61,27 +61,33 @@ class system():
         
     
     def assess(self,imagePath, visualise = False, flip = False):
-        t0 = time.time()
-        self.imagePath = imagePath
-        if flip == False:
+        t0 = time.time()                                                                  # Get the time
+        self.imagePath = imagePath                                                        # Assign the image path
+        if flip == False:                                                                 # Read the image in color and grayscale and flip if needed
             self.imageRGB = cv2.imread(imagePath, cv2.IMREAD_COLOR)
             self.imageGRAY = cv2.imread(imagePath, cv2.IMREAD_GRAYSCALE)
         else:
             self.imageRGB = cv2.flip(cv2.imread(imagePath, cv2.IMREAD_COLOR),1)
             self.imageGRAY = cv2.flip(cv2.imread(imagePath, cv2.IMREAD_GRAYSCALE),1)
-        self.imageCLAHE = self.clahe.apply(self.imageGRAY)
-        self.imageCLAHERGB = cv2.cvtColor(self.clahe.apply(self.imageGRAY), cv2.COLOR_GRAY2RGB)
-        self.imageHeight, self.imageWidth = self.imageGRAY.shape
+        self.imageCLAHE = self.clahe.apply(self.imageGRAY)                                 # Apply Histogram Equalizer to emphasize the CONTRAST color
+        self.imageCLAHERGB = cv2.cvtColor(self.clahe.apply(self.imageGRAY), cv2.COLOR_GRAY2RGB)     # Change to RGB mode after using Histogram
+        self.imageHeight, self.imageWidth = self.imageGRAY.shape                           # Getting height and Width from the image
         t1 = time.time()
+
+        # This is a function using YOLO detection to retrieve the bounding box and extracting data into a series of detaching, cpu,.. and convert to numpy
         self.allDetect = self.detectModule.predict(self.imageCLAHERGB, save_txt = False, save_conf = True, verbose=False)[0].boxes.data.detach().cpu().numpy().astype("int")
         t2 = time.time()
+
+        # Filter vertebra from all Detect
         self.vertebraDetect = self.allDetect[self.allDetect[:,5] == 0][np.flip(self.allDetect[self.allDetect[:,5] == 0,1].argsort())][:-1]
         crop_list_1 = []
         self.vertebraDetectPad = []
         for count, box in enumerate(self.vertebraDetect):
             pad = 0.2
-            x1, y1, x2, y2 = box[0:4]
-            padX, padY = int((x2-x1)*pad), int((y2-y1)*pad) 
+            x1, y1, x2, y2 = box[0:4]                       # Extract coordinate from bounding box
+            padX, padY = int((x2-x1)*pad), int((y2-y1)*pad) # Calculate padding from width and height
+
+            # Adjust the bounding box to stay within the image width and height
             if y1 >= padY: y1 = y1 - padY
             if y1 < padY: y1 = 0
             if y2 + padY <= self.imageHeight: y2 = y2 + padY
@@ -91,23 +97,31 @@ class system():
             if x2 + padX <= self.imageWidth: x2 = x2 + padX
             if x2 + padX > self.imageWidth: x2 = self.imageWidth
             self.vertebraDetectPad.append([x1,y1,x2,y2])
-            crop = self.imageGRAY[y1:y2,x1:x2]
-            crop_enhanced = cv2.cvtColor(self.clahe.apply(crop),cv2.COLOR_GRAY2RGB)
+            crop = self.imageGRAY[y1:y2,x1:x2]               # Extract the vertebra region from the bounding box
+            crop_enhanced = cv2.cvtColor(self.clahe.apply(crop),cv2.COLOR_GRAY2RGB)     # Change to RGB color mode
             #crop_enhanced = cv2.cvtColor(self.imageCLAHE[y1:y2,x1:x2],cv2.COLOR_GRAY2RGB)
             crop_list_1.append([crop, crop_enhanced])
 
         crop_list_2 = []
         self.spine = []
-        with torch.no_grad(): 
-            self.segmentModule.eval()
+        with torch.no_grad():   # Deativate auto grad engine -> saving memory usage and computation
+            self.segmentModule.eval()   # Change from training mode to inteference mode ( for doing tasks )
             t3 = time.time()
             for crop, crop_enhanced in crop_list_1:
+                
+                # Resize image
+                # Change type from image to tensor and change format
+                # Use segment module
+                # Use sigmoid activate function (map input to 0 to 1, for binary classification)
+                # Applies dilation operation (add pixel to object boundaries)
+                # Applies erosion operation (remove pixel to object boundaries)
+
                 crop_maskA = cv2.resize(filter_mask_binary(self.erosion(self.dilation(torch.sigmoid(self.segmentModule(torch.Tensor(cv2.resize(crop_enhanced/255, (256, 256))).permute(2, 0, 1).unsqueeze(0).to(self.device))).cpu())).squeeze(1).detach().numpy()[0]*255),(crop_enhanced.shape[1],crop_enhanced.shape[0]))
                 crop_maskB = cv2.resize(filter_mask_binary(cv2.flip(self.erosion(self.dilation(torch.sigmoid(self.segmentModule(torch.Tensor(cv2.resize(cv2.flip(crop_enhanced,0)/255, (256, 256))).permute(2, 0, 1).unsqueeze(0).to(self.device))).cpu())).squeeze(1).detach().numpy()[0],0)*255),(crop_enhanced.shape[1],crop_enhanced.shape[0]))
                 crop_list_2.append([crop, crop_maskA, crop_maskB])
         t4 = time.time()
         for crop, crop_maskA, crop_maskB in crop_list_2:
-            vertebra = self.measureModule(crop,[crop_maskA,crop_maskB])
+            vertebra = self.measureModule(crop,[crop_maskA,crop_maskB]) # Get all vertebra points
             self.spine.append(vertebra)
         t5 = time.time()
         self.elapsed, self.detectElapsed, self.segmentElapsed, self.measureElapsed = t5-t0, t2-t1, t4-t3, t5-t4
