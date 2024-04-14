@@ -96,7 +96,7 @@ class system():
             if x1 < padX: x1 = 0
             if x2 + padX <= self.imageWidth: x2 = x2 + padX
             if x2 + padX > self.imageWidth: x2 = self.imageWidth
-            self.vertebraDetectPad.append([x1,y1,x2,y2])
+            self.vertebraDetectPad.append([x1,y1,x2,y2])     # Adding all the points (both upper and lower) in detect pad
             crop = self.imageGRAY[y1:y2,x1:x2]               # Extract the vertebra region from the bounding box
             crop_enhanced = cv2.cvtColor(self.clahe.apply(crop),cv2.COLOR_GRAY2RGB)     # Change to RGB color mode
             #crop_enhanced = cv2.cvtColor(self.imageCLAHE[y1:y2,x1:x2],cv2.COLOR_GRAY2RGB)
@@ -129,18 +129,20 @@ class system():
         self.fracture = 0
         for COUNT, VERTEBRA in enumerate(self.spine):
             if VERTEBRA.valid == 1 and COUNT > 0:
-                if VERTEBRA.l > 0.2: self.fracture = 1
+                if VERTEBRA.l > 0.2: self.fracture = 1 # Find if the vertebra has fractures
         
         if visualise == True:
             result = self.imageRGB.copy()
+
+            # Draw a rectangle based on the vertabra detect points
             for COUNT, VERTEBRA in enumerate(self.spine):
-                box = self.vertebraDetectPad[COUNT]
+                box = self.vertebraDetectPad[COUNT]   # Get all the vertebra detect points
                 anchor = [box[0], box[1]]
                 x1, y1, x2, y2 = box[0], box[1], box[2], box[3]
-                cv2.rectangle(result,[x1,y1],[x2,y2],RED,2)  
+                cv2.rectangle(result,[x1,y1],[x2,y2],RED,2)  # Draw a rectangle around 4 points
             self.outputDetection = result
 
-            maskA = np.zeros(result.shape[0:2], dtype = "uint8")
+            maskA = np.zeros(result.shape[0:2], dtype = "uint8")  # Get the width and height of image and create a 2D array based on that
             maskB = np.zeros(result.shape[0:2], dtype = "uint8")
             for COUNT, VERTEBRA in enumerate(self.spine):
                 if VERTEBRA.valid == 1 and COUNT > 0:
@@ -149,13 +151,15 @@ class system():
                     x1, y1, x2, y2 = box[0], box[1], box[2], box[3]
                     maskA_temp = np.zeros(result.shape[0:2], dtype = "uint8")
                     maskB_temp = np.zeros(result.shape[0:2], dtype = "uint8")
-                    maskA_temp[y1:y2,x1:x2] = VERTEBRA.A.input
+                    maskA_temp[y1:y2,x1:x2] = VERTEBRA.A.input      # Copy the input from current vertebra to following region on maskA_temp
                     maskB_temp[y1:y2,x1:x2] = VERTEBRA.B.input
-                    maskA = cv2.bitwise_or(maskA, maskA_temp)
+                    maskA = cv2.bitwise_or(maskA, maskA_temp)       # Combine 2 images to get the hightlighted part on maskA_temp
                     maskB = cv2.bitwise_or(maskB, maskB_temp)
-            self.outputSegmentation = np.array([maskA, maskB])
+            self.outputSegmentation = np.array([maskA, maskB])      # Get 2 hightlighted part - image to result
             
-            result = np.zeros(result.shape[0:3], dtype = "uint8")
+            result = np.zeros(result.shape[0:3], dtype = "uint8")   # Create a 3D array based on the result shape
+
+            # Draw circle for the small points (including 4 vertebras and 2 middles) and connecting them using line
             for COUNT, VERTEBRA in enumerate(self.spine):
                 if VERTEBRA.valid == 1 and COUNT > 0:
                     COLOR_CODE = WHITE
@@ -174,6 +178,9 @@ class system():
                     cv2.circle(result, (anchor + VERTEBRA.p2), 7, COLOR_CODE, -1)
             self.outputMeasurement = result
             
+            # Draw circle for the small points (including 4 vertebras and 2 middles) and connecting them using line
+            # Adding color based on the severion of the fracture
+            # Adding text for more information of the fracture
             result = imageWithMasks(self.imageGRAY,maskA,maskB,COLOR_A,COLOR_B)
             for COUNT, VERTEBRA in enumerate(self.spine):
                 if VERTEBRA.valid == 1 and COUNT > 0:
